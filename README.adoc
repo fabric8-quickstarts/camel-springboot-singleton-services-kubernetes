@@ -1,0 +1,135 @@
+= Spring Boot Camel Singleton Services Kubernetes
+
+Implementation of the Singleton Service Pattern with clustered Camel routes deployed on Kubernetes/Red Hat OpenShift
+
+
+=== Prerequisites
+
+* Maven
+* A Red Hat Openshift or Kubernetes instance
+* A java jdk 8 or 11
+
+==== Running the example on Openshift
+IMPORTANT: You need to run this example on Container Development Kit 3.3 or OpenShift 4.8.
+Both of these products have suitable Fuse images pre-installed.
+If you run it in an environment where those images are not preinstalled follow the steps described in <<single-node-without-preinstalled-images>>.
+
+
+To deploy this quickstart to a running OpenShift cluster:
+
+. Download the project and extract the archive on your local filesystem.
+
+. Log in to your OpenShift cluster:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc login -u developer -p developer
+----
+
+. Create a new OpenShift project for the quickstart:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc new-project MY_PROJECT_NAME
+----
+
+. Change the directory to the folder that contains the extracted quickstart application (for example, `my_openshift/camel-springboot-singleton-services-kubernetes`) :
+
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ cd my_openshift/camel-springboot-singleton-services-kubernetes
+----
+
+. Build and deploy the project to the OpenShift cluster:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ mvn clean -DskipTests oc:deploy -Popenshift
+----
+
+. List all the running pods:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc get pods
+----
+
+. Find the name of the pod that runs this quickstart. Output the logs from the running pods and see the messages sent by Camel:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc logs <name of pod>
+----
++
+....
+2022-01-20 11:04:57.997  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-vm8bl] The cluster has no leaders. Trying to acquire the leadership...
+2022-01-20 11:04:58.005  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-vm8bl] The cluster has no leaders. Trying to acquire the leadership...
+2022-01-20 11:04:58.337  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-vm8bl] Leadership acquired by current pod with immediate effect
+2022-01-20 11:04:58.342  WARN 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-vm8bl] Unable to create the ConfigMap, it may have been created by other cluster members concurrently. If the problem persists, check if the service account has the right permissions to create it
+2022-01-20 11:04:58.342  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-vm8bl] Unable to acquire the leadership, it may have been acquired by another pod
+2022-01-20 11:04:58.359  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The list of cluster members has changed: [springboot-camel-singleton-services-kubernetes-1-vm8bl, springboot-camel-singleton-services-kubernetes-1-5cn7h, springboot-camel-singleton-services-kubernetes-1-lvwb6]
+2022-01-20 11:04:58.382  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The cluster has a new leader: Optional[springboot-camel-singleton-services-kubernetes-1-vm8bl]
+2022-01-20 11:04:58.387  INFO 1 --- [sLeaderNotifier] o.a.c.component.master.MasterConsumer    : Leadership taken: consumer started: timer://clock
+2022-01-20 11:04:58.387  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The list of cluster members has changed: [springboot-camel-singleton-services-kubernetes-1-vm8bl, springboot-camel-singleton-services-kubernetes-1-5cn7h, springboot-camel-singleton-services-kubernetes-1-lvwb6]
+2022-01-20 11:04:59.438  INFO 1 --- [- timer://clock] route1                                   : Hello World!
+2022-01-20 11:05:00.388  INFO 1 --- [- timer://clock] route1                                   : Hello World!
+2022-01-20 11:05:01.388  INFO 1 --- [- timer://clock] route1                                   : Hello World!
+2022-01-20 11:05:02.388  INFO 1 --- [- timer://clock] route1                                   : Hello World!
+2022-01-20 11:05:03.390  INFO 1 --- [- timer://clock] route1                                   : Hello World!
+....
++
+. The output of the other two pod in the cluster should waiting for the lock:
++
+....
+2022-01-20 11:05:00.125  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-5cn7h] The cluster has no leaders. Trying to acquire the leadership...
+2022-01-20 11:05:00.154  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The cluster has a new leader: Optional[springboot-camel-singleton-services-kubernetes-1-vm8bl]
+2022-01-20 11:05:00.182  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The list of cluster members has changed: [springboot-camel-singleton-services-kubernetes-1-vm8bl, springboot-camel-singleton-services-kubernetes-1-5cn7h, springboot-camel-singleton-services-kubernetes-1-lvwb6]
+2022-01-20 11:05:00.280  INFO 1 --- [rshipController] c.c.k.c.l.KubernetesLeadershipController : Pod[springboot-camel-singleton-services-kubernetes-1-5cn7h] Leadership acquired by current pod with immediate effect
+2022-01-20 11:05:00.308  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The cluster has a new leader: Optional[springboot-camel-singleton-services-kubernetes-1-5cn7h]
+2022-01-20 11:05:00.309  INFO 1 --- [sLeaderNotifier] i.f.q.camel.singleton.CustomService      : CustomService has been started on the master pod
+2022-01-20 11:05:00.309  INFO 1 --- [sLeaderNotifier] o.a.c.c.k.c.lock.TimedLeaderNotifier     : The list of cluster members has changed: [springboot-camel-singleton-services-kubernetes-1-vm8bl, springboot-camel-singleton-services-kubernetes-1-5cn7h, springboot-camel-singleton-services-kubernetes-1-lvwb6]
+....
+
+[#single-node-without-preinstalled-images]
+=== Running the Quickstart on a single-node Kubernetes/OpenShift cluster without preinstalled images
+
+A single-node Kubernetes/OpenShift cluster provides you with access to a cloud environment that is similar to a production environment.
+
+If you have a single-node Kubernetes/OpenShift cluster, such as Minishift or the Red Hat Container Development Kit, link:http://appdev.openshift.io/docs/minishift-installation.html[installed and running], you can deploy your quickstart there.
+
+. Log in to your OpenShift cluster:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc login -u developer -p developer
+----
+
+. Create a new OpenShift project for the quickstart:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ oc new-project MY_PROJECT_NAME
+----
+
+. Import base images in your newly created project (MY_PROJECT_NAME) according to https://access.redhat.com/documentation/en-us/red_hat_fuse/7.7/html/fuse_on_openshift_guide/get-started-non-admin[documentation].
+
+. Change the directory to the folder that contains the extracted quickstart application (for example, `my_openshift/camel-springboot-singleton-services-kubernetes`) :
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ cd my_openshift/camel-springboot-singleton-services-kubernetes
+----
+
+. Build and deploy the project to the OpenShift cluster:
++
+[source,bash,options="nowrap",subs="attributes+"]
+----
+$ mvn clean -DskipTests oc:deploy -Popenshift -Djkube.generator.fromMode=istag -Djkube.generator.from=MY_PROJECT_NAME/fuse7-java-openshift:1.10
+----
+
+. In your browser, navigate to the `MY_PROJECT_NAME` project in the OpenShift console.
+Wait until you can see that the pods for the `camel-springboot-singleton-services-kubernetes-*` have started up.
+
+. On the project's `Overview` page, navigate to the details page deployment of the `camel-springboot-singleton-services-kubernetes` application: `https://OPENSHIFT_IP_ADDR:8443/console/project/MY_PROJECT_NAME/browse/pods/camel-springboot-singleton-services-kubernetes-NUMBER_OF_DEPLOYMENT?tab=details`.
+
+. Switch to tab `Logs` and then see the messages sent by Camel.
