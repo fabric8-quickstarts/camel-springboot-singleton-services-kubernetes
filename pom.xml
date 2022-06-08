@@ -184,7 +184,7 @@
                                         </property>
                                         <property>
                                             <name>rht.comp</name>
-                                            <value>spring-boot-camel-rhosak</value>
+                                            <value>${project.artifactId}</value>
                                         </property>
                                         <property>
                                             <name>rht.comp_ver</name>
